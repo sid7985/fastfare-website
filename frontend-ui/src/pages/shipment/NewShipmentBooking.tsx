@@ -1,0 +1,308 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, ArrowRight, Package } from "lucide-react";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import ShipmentStepper from "@/components/shipment/ShipmentStepper";
+import AddressForm from "@/components/shipment/AddressForm";
+import PackageForm from "@/components/shipment/PackageForm";
+import ServiceSelection from "@/components/shipment/ServiceSelection";
+import ReviewConfirm from "@/components/shipment/ReviewConfirm";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
+
+const steps = [
+  { id: 1, name: "Pickup Details", description: "Enter pickup address" },
+  { id: 2, name: "Delivery Details", description: "Enter delivery address" },
+  { id: 3, name: "Package Info", description: "Add package details" },
+  { id: 4, name: "Review & Confirm", description: "Confirm your booking" },
+];
+
+const initialAddressData = {
+  name: "",
+  phone: "",
+  email: "",
+  address: "",
+  pincode: "",
+  city: "",
+  state: "",
+  landmark: "",
+  addressType: "office",
+  saveAddress: false,
+};
+
+const initialPackageData = {
+  packages: [
+    {
+      id: "1",
+      name: "",
+      quantity: 1,
+      weight: 0.5,
+      length: 10,
+      width: 10,
+      height: 10,
+      value: 0,
+    },
+  ],
+  contentType: "",
+  description: "",
+  paymentMode: "prepaid",
+  codAmount: 0,
+  insurance: false,
+};
+
+const initialServiceData = {
+  serviceType: "standard",
+  carrier: "",
+  insurance: false,
+  fragileHandling: false,
+  signatureRequired: false,
+  scheduledPickup: false,
+  pickupDate: "",
+  pickupSlot: "",
+};
+
+const NewShipmentBooking = () => {
+  const navigate = useNavigate();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
+  const [pickupData, setPickupData] = useState(initialAddressData);
+  const [deliveryData, setDeliveryData] = useState(initialAddressData);
+  const [packageData, setPackageData] = useState(initialPackageData);
+  const [serviceData, setServiceData] = useState(initialServiceData);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+
+  const handleNext = async () => {
+    if (currentStep < 4) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      // Submit booking
+      setIsSubmitting(true);
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+
+        const bookingPayload = {
+          pickup: pickupData,
+          delivery: deliveryData,
+          packages: packageData.packages,
+
+          // Package Details (Flattened)
+          contentType: packageData.contentType,
+          description: packageData.description,
+          paymentMode: packageData.paymentMode,
+          codAmount: packageData.codAmount,
+
+          // Service Details (Flattened)
+          serviceType: serviceData.serviceType,
+          carrier: serviceData.carrier,
+          insurance: serviceData.insurance,
+          fragileHandling: serviceData.fragileHandling,
+          signatureRequired: serviceData.signatureRequired,
+          scheduledPickup: serviceData.scheduledPickup,
+          pickupDate: serviceData.pickupDate,
+          pickupSlot: serviceData.pickupSlot,
+        };
+
+        const response = await fetch("http://localhost:3000/api/shipments/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(bookingPayload),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to create shipment");
+        }
+
+        toast({
+          title: "Shipment Created Successfully",
+          description: `Tracking ID: ${data.shipment?.trackingId}`,
+        });
+
+        navigate("/shipment/success", { state: { shipment: data.shipment } });
+
+      } catch (error: any) {
+        toast({
+          title: "Booking Failed",
+          description: error.message || "Could not book shipment. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleEditStep = (step: number) => {
+    setCurrentStep(step);
+  };
+
+  const canProceed = () => {
+    switch (currentStep) {
+      case 1:
+        return pickupData.name && pickupData.phone && pickupData.address && pickupData.pincode;
+      case 2:
+        return deliveryData.name && deliveryData.phone && deliveryData.address && deliveryData.pincode;
+      case 3:
+        return packageData.contentType && packageData.packages.length > 0;
+      case 4:
+        return termsAccepted && serviceData.carrier;
+      default:
+        return false;
+    }
+  };
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <AddressForm
+            type="pickup"
+            data={pickupData}
+            onChange={setPickupData}
+          />
+        );
+      case 2:
+        return (
+          <AddressForm
+            type="delivery"
+            data={deliveryData}
+            onChange={setDeliveryData}
+          />
+        );
+      case 3:
+        return <PackageForm data={packageData} onChange={setPackageData} />;
+      case 4:
+        return (
+          <>
+            <ServiceSelection data={serviceData} onChange={setServiceData} />
+            <div className="mt-8">
+              <ReviewConfirm
+                bookingData={{
+                  pickup: pickupData,
+                  delivery: deliveryData,
+                  packages: packageData,
+                  service: serviceData,
+                }}
+                termsAccepted={termsAccepted}
+                onTermsChange={setTermsAccepted}
+                onEditStep={handleEditStep}
+              />
+            </div>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header />
+
+      <main className="flex-1 py-8">
+        <div className="container max-w-4xl mx-auto px-4">
+          {/* Page Header */}
+          <div className="flex items-center gap-4 mb-8">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/dashboard")}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">New Shipment</h1>
+              <p className="text-muted-foreground">
+                Create a new shipment booking
+              </p>
+            </div>
+          </div>
+
+          {/* Stepper */}
+          <ShipmentStepper steps={steps} currentStep={currentStep} />
+
+          {/* Step Content */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
+                {steps[currentStep - 1].name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentStep}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {renderStepContent()}
+                </motion.div>
+              </AnimatePresence>
+            </CardContent>
+          </Card>
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between mt-6">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (currentStep > 1) {
+                  handleBack();
+                } else {
+                  navigate("/dashboard");
+                }
+              }}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back
+            </Button>
+            <Button
+              onClick={handleNext}
+              disabled={!canProceed() || isSubmitting}
+              className="gradient-primary"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Booking...
+                </>
+              ) : (
+                <>
+                  {currentStep === 4 ? "Confirm Booking" : "Continue"}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+};
+
+export default NewShipmentBooking;
