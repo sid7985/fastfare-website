@@ -1,9 +1,179 @@
 import express from 'express';
+import Parcel from '../models/Parcel.js';
+import { protect } from '../middleware/auth.js';
+
 const router = express.Router();
 
-// Stub: Parcels routes — to be implemented
-router.get('/', (req, res) => {
-    res.json({ message: 'Parcels endpoint — stub' });
+// ─── POST /api/parcels/scan ─── Mobile app scans a parcel barcode
+router.post('/scan', protect, async (req, res) => {
+    try {
+        const { barcode, packageName, packageDescription, contentType, weight, quantity, sender, receiver } = req.body;
+
+        if (!barcode) {
+            return res.status(400).json({ success: false, message: 'Barcode is required' });
+        }
+
+        // Check if already scanned
+        const existing = await Parcel.findOne({ barcode });
+        if (existing) {
+            return res.status(409).json({
+                success: false,
+                message: 'Parcel already scanned',
+                parcel: existing
+            });
+        }
+
+        const parcel = await Parcel.create({
+            barcode,
+            packageName: packageName || `PKG-${barcode.slice(-6)}`,
+            packageDescription,
+            contentType,
+            weight,
+            quantity: quantity || 1,
+            sender,
+            receiver,
+            status: 'scanned',
+            scannedBy: {
+                partnerId: req.user._id,
+                name: req.user.contactPerson || req.user.businessName
+            },
+            scannedAt: new Date()
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Parcel scanned successfully',
+            parcel
+        });
+    } catch (error) {
+        console.error('Scan error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ─── GET /api/parcels/partner/my-scans ─── Get parcels scanned by current partner
+router.get('/partner/my-scans', protect, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 100;
+        const status = req.query.status;
+
+        const filter = { 'scannedBy.partnerId': req.user._id };
+        if (status) filter.status = status;
+
+        const parcels = await Parcel.find(filter)
+            .sort({ scannedAt: -1 })
+            .limit(limit)
+            .lean();
+
+        res.json({
+            success: true,
+            parcels,
+            total: parcels.length
+        });
+    } catch (error) {
+        console.error('Fetch scans error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ─── GET /api/parcels/track/:awb ─── Track a parcel by AWB (public)
+router.get('/track/:awb', async (req, res) => {
+    try {
+        const parcel = await Parcel.findOne({ awb: req.params.awb }).lean();
+
+        if (!parcel) {
+            return res.status(404).json({ success: false, message: 'Parcel not found' });
+        }
+
+        res.json({ success: true, parcel });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ─── PUT /api/parcels/:id/assign-driver ─── Auto-assign available driver
+router.put('/:id/assign-driver', protect, async (req, res) => {
+    try {
+        const parcel = await Parcel.findById(req.params.id);
+        if (!parcel) {
+            return res.status(404).json({ success: false, message: 'Parcel not found' });
+        }
+
+        if (parcel.assignedDriver) {
+            return res.status(400).json({ success: false, message: 'Driver already assigned' });
+        }
+
+        // Try to find an available WMS driver
+        let WmsDriver;
+        try {
+            WmsDriver = (await import('../models/WmsDriver.js')).default;
+        } catch (e) {
+            // WmsDriver model may not exist
+        }
+
+        let driverName = 'Pending Assignment';
+        if (WmsDriver) {
+            const driver = await WmsDriver.findOne({ status: 'available' });
+            if (driver) {
+                parcel.assignedDriver = driver._id;
+                driver.status = 'on_trip';
+                await driver.save();
+                driverName = driver.name;
+            }
+        }
+
+        parcel.status = 'dispatched';
+        await parcel.save();
+
+        res.json({
+            success: true,
+            message: `Driver assigned: ${driverName}`,
+            parcel
+        });
+    } catch (error) {
+        console.error('Assign driver error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ─── PUT /api/parcels/:id/status ─── Update parcel status
+router.put('/:id/status', protect, async (req, res) => {
+    try {
+        const { status, deliveredTo, deliveryNotes, photoProof } = req.body;
+
+        const parcel = await Parcel.findById(req.params.id);
+        if (!parcel) {
+            return res.status(404).json({ success: false, message: 'Parcel not found' });
+        }
+
+        parcel.status = status;
+        if (status === 'delivered') {
+            parcel.deliveredAt = new Date();
+            parcel.deliveredTo = deliveredTo;
+            parcel.deliveryNotes = deliveryNotes;
+            parcel.photoProof = photoProof;
+        }
+        await parcel.save();
+
+        res.json({ success: true, message: 'Status updated', parcel });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ─── GET /api/parcels ─── List all parcels (admin)
+router.get('/', protect, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const parcels = await Parcel.find()
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .lean();
+
+        res.json({ success: true, parcels, total: parcels.length });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 });
 
 export default router;

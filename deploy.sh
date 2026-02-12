@@ -13,7 +13,7 @@ echo "🚀 FastFare Auto Deploy Starting..."
 echo "═══════════════════════════════════════"
 
 # ── Step 1: Install everything ──
-echo "📦 Installing Node.js, Nginx, PM2, MongoDB..."
+echo "📦 Installing Node.js, Nginx, PM2..."
 apt update -y
 apt install -y curl gnupg nginx git
 
@@ -28,15 +28,6 @@ echo "✅ Node.js $(node -v)"
 npm install -g pm2 2>/dev/null
 echo "✅ PM2 installed"
 
-# MongoDB 7
-if ! command -v mongod &> /dev/null; then
-    curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg
-    echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-    apt update -y && apt install -y mongodb-org
-fi
-systemctl enable --now mongod
-echo "✅ MongoDB running"
-
 # ── Step 2: Clone code ──
 echo "📂 Cloning repository..."
 rm -rf $APP_DIR
@@ -49,25 +40,41 @@ echo "⚙️  Setting up backend..."
 cd $APP_DIR/backend
 npm install --production
 
-# Generate JWT secret
-JWT=$(openssl rand -hex 32)
+# Preserve existing .env if it exists
+if [ -f /root/fastfare-backup.env ]; then
+    cp /root/fastfare-backup.env .env
+    echo "✅ Restored .env from backup"
+else
+    # Generate JWT secret
+    JWT=$(openssl rand -hex 32)
 
-# Create .env
-cat > .env << ENVEOF
+    cat > .env << ENVEOF
 PORT=5000
 NODE_ENV=production
-MONGO_URI=mongodb://localhost:27017/fastfare
+MONGO_URI=mongodb+srv://fastfare:fastfare@cluster1.brrqru3.mongodb.net/?appName=Cluster1
 JWT_SECRET=$JWT
 BACKEND_URL=https://$DOMAIN
+GSTIN_VERIFY_API_KEY=15ae8a07ed2c3975f0a9006262b3cf16
 
-# Add your API keys below (site works without them, just payments/KYC won't)
-RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-DIDIT_API_URL=https://api.didit.me
-DIDIT_API_KEY=
-DIDIT_WORKFLOW_ID=
-DIDIT_WEBHOOK_SECRET=
+# Razorpay
+RAZORPAY_KEY_ID=rzp_test_RPMfsNkkULkOoC
+RAZORPAY_KEY_SECRET=rMiwNkvCNgF2bOh3m6Z9NJ8A
+
+# Didit.me KYC
+DIDIT_API_KEY=cHJUH-OVRDyO-_hvcGHZ6ezfSpPKP0i1qDxqZ8cP8GY
+DIDIT_WEBHOOK_SECRET=d3gxma_T7gW4OvtSKSo-AUXD-B7wXdDmTbJC5Dflre0
+DIDIT_WORKFLOW_ID=b17c98eb-b0d1-464b-a994-74cc61a716b7
+DIDIT_API_URL=https://verification.didit.me/v2
+
+# Admin seed (production)
+ADMIN_EMAIL=admin@fastfare.com
+ADMIN_PASSWORD=FastFare@Admin2026!
 ENVEOF
+
+    # Backup .env for future deploys
+    cp .env /root/fastfare-backup.env
+    echo "✅ Backend .env created & backed up"
+fi
 
 echo "✅ Backend configured"
 
@@ -75,7 +82,7 @@ echo "✅ Backend configured"
 echo "🔄 Starting backend..."
 pm2 delete fastfare-api 2>/dev/null || true
 cd $APP_DIR/backend
-pm2 start src/server.js --name fastfare-api
+NODE_ENV=production pm2 start src/server.js --name fastfare-api --node-args="--max-old-space-size=512"
 pm2 save
 pm2 startup systemd -u root --hp /root 2>/dev/null || true
 echo "✅ Backend running on port 5000"
@@ -84,7 +91,12 @@ echo "✅ Backend running on port 5000"
 echo "🏗️  Building frontend..."
 cd $APP_DIR/frontend-ui
 npm install
-echo "VITE_API_URL=https://$DOMAIN/api" > .env.production
+
+cat > .env.production << FEENVEOF
+VITE_API_URL=https://$DOMAIN/api
+VITE_GOOGLE_MAPS_API_KEY=AIzaSyAa1oV7WmW3CvLvDzvdWLUzO3FzahBzhZk
+FEENVEOF
+
 npm run build
 echo "✅ Frontend built"
 
@@ -102,10 +114,12 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;
 
+    # Frontend SPA
     location / {
         try_files \$uri \$uri/ /index.html;
     }
 
+    # API proxy
     location /api/ {
         proxy_pass http://127.0.0.1:5000;
         proxy_http_version 1.1;
@@ -119,6 +133,20 @@ server {
         client_max_body_size 10M;
     }
 
+    # Socket.io WebSocket proxy
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 86400;
+    }
+
+    # Uploaded files
     location /uploads/ {
         alias $APP_DIR/backend/uploads/;
     }
@@ -150,10 +178,6 @@ echo "════════════════════════�
 echo ""
 echo "🌐 Site: https://$DOMAIN"
 echo "🔧 API:  https://$DOMAIN/api"
-echo ""
-echo "📝 To add your API keys later:"
-echo "   nano $APP_DIR/backend/.env"
-echo "   pm2 restart fastfare-api"
 echo ""
 echo "📋 PM2 status: pm2 status"
 echo "📋 View logs:  pm2 logs fastfare-api"

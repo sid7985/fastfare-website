@@ -57,7 +57,7 @@ const PORT = process.env.PORT || 3000;
 // Socket.io setup with CORS
 const ALLOWED_ORIGINS = process.env.NODE_ENV === 'production'
   ? ['https://fastfare.org', 'https://www.fastfare.org']
-  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'];
+  : true; // Allow all origins in development
 
 const io = new Server(httpServer, {
   cors: {
