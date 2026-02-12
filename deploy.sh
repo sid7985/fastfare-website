@@ -6,7 +6,7 @@
 
 set -e
 DOMAIN="fastfare.org"
-REPO="https://github.com/sid7985/fastfare-website.git"
+REPO="https://github.com/sid7985/FastFare-Website-1.git"
 APP_DIR="/var/www/fastfare"
 
 echo "🚀 FastFare Auto Deploy Starting..."
