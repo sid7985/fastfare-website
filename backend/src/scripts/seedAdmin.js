@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import Parcel from '../models/Parcel.js';
 
 const TEST_ACCOUNTS = [
     {
@@ -39,11 +40,10 @@ const TEST_ACCOUNTS = [
 export const seedAdmin = async () => {
     try {
         if (process.env.NODE_ENV === 'production') {
-            // In production, only seed admin if env vars are set
             const adminEmail = process.env.ADMIN_EMAIL;
             const adminPassword = process.env.ADMIN_PASSWORD;
             if (!adminEmail || !adminPassword) {
-                console.warn('⚠️  ADMIN_EMAIL/ADMIN_PASSWORD not set — skipping seed in production');
+                console.warn('⚠️  ADMIN_EMAIL/ADMIN_PASSWORD not set — skipping seed');
                 return;
             }
             const exists = await User.findOne({ email: adminEmail });
@@ -58,12 +58,51 @@ export const seedAdmin = async () => {
             return;
         }
 
-        // Development — seed all 3 test accounts
+        // Development — seed 3 test accounts
         for (const account of TEST_ACCOUNTS) {
             const exists = await User.findOne({ email: account.email });
             if (!exists) {
                 await User.create(account);
                 console.log(`✅ ${account.role} created: ${account.email}`);
+            }
+        }
+
+        // Seed 1 demo parcel linked to partner (if none exist)
+        const parcelCount = await Parcel.countDocuments();
+        if (parcelCount === 0) {
+            const partner = await User.findOne({ role: 'shipment_partner' });
+            if (partner) {
+                await Parcel.create({
+                    barcode: 'FF-DEMO-001',
+                    orderId: 'ORD-000001',
+                    awb: 'AWB0000000001',
+                    packageName: 'Demo Shipment',
+                    packageDescription: 'Test parcel for system verification',
+                    contentType: 'Electronics',
+                    weight: 1.5,
+                    quantity: 1,
+                    sender: {
+                        name: 'FastFare Warehouse',
+                        phone: '0000000000',
+                        address: 'FastFare Hub, Andheri East',
+                        city: 'Mumbai',
+                        pincode: '400093'
+                    },
+                    receiver: {
+                        name: 'Test Recipient',
+                        phone: '9999999999',
+                        address: 'Green Park, Sector 21',
+                        city: 'Delhi',
+                        pincode: '110022'
+                    },
+                    status: 'scanned',
+                    scannedBy: {
+                        partnerId: partner._id,
+                        name: partner.contactPerson
+                    },
+                    scannedAt: new Date()
+                });
+                console.log('✅ Demo parcel created: AWB0000000001');
             }
         }
     } catch (error) {
