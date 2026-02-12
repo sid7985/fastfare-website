@@ -55,14 +55,10 @@ const PartnerOrders = () => {
     setError(null);
     try {
       const token = localStorage.getItem("token");
-      console.log("[PartnerOrders] Fetching from:", `${API_BASE_URL}/api/parcels/partner/my-scans?limit=100`);
-      console.log("[PartnerOrders] Token present:", !!token);
       const res = await fetch(`${API_BASE_URL}/api/parcels/partner/my-scans?limit=100`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      console.log("[PartnerOrders] Response status:", res.status);
       const data = await res.json();
-      console.log("[PartnerOrders] Response data:", data);
       if (data.success && data.parcels) {
         setParcels(data.parcels);
       } else {

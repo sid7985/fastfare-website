@@ -47,9 +47,6 @@ import codRoutes from './routes/cod.js';
 import partnerLedgerRoutes from './routes/partner-ledger.js';
 import adminOverrideRoutes from './routes/admin-overrides.js';
 
-// Cron utilities (available for manual trigger via admin API)
-// import { startSettlementCron } from './utils/settlementCron.js';
-// import { startTierEvaluationCron } from './utils/tierEvaluation.js';
 
 dotenv.config();
 
@@ -58,9 +55,13 @@ const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Socket.io setup with CORS
+const ALLOWED_ORIGINS = process.env.NODE_ENV === 'production'
+  ? ['https://fastfare.org', 'https://www.fastfare.org']
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'];
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: ALLOWED_ORIGINS,
     methods: ["GET", "POST"]
   }
 });
@@ -76,7 +77,7 @@ locationSocket(io);
 
 // Middleware
 app.use(cors({
-  origin: '*',
+  origin: ALLOWED_ORIGINS,
   credentials: true
 }));
 app.use(express.json());
@@ -141,14 +142,8 @@ mongoose.connect(process.env.MONGO_URI)
 
     seedAdmin().catch(err => console.error('Seed error:', err));
 
-    // Use httpServer instead of app.listen for Socket.IO — bind to 0.0.0.0 for LAN access
     httpServer.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 FastFare Backend running on http://0.0.0.0:${PORT}`);
-      console.log(`📦 WMS routes mounted at /api/wms/*`);
-      console.log(`💰 Settlement engine mounted at /api/settlement/*`);
-      console.log(`🔌 Socket.io enabled for real-time tracking`);
-      console.log(`⚙️  Settlement cron: POST /api/settlement/process`);
-      console.log(`⚙️  Tier evaluation: POST /api/tiers/evaluate`);
+      console.log(`🚀 FastFare Backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
     });
   })
   .catch(err => {
@@ -162,5 +157,5 @@ mongoose.connection.on('error', err => {
 });
 
 mongoose.connection.on('disconnected', () => {
-  console.log('MongoDB disconnected');
+  console.warn('⚠️ MongoDB disconnected');
 });

@@ -71,63 +71,26 @@ const LiveMapTracking = () => {
         let dataFetched = false;
 
         if (awb) {
-            try {
-                const data = await trackingApi.track(awb);
-                if (data.tracking) {
-                    setTrackingData(data.tracking);
-                    
-                    // Set progress based on status
-                    const statusProgressMap: Record<string, number> = {
-                      pending: 0,
-                      pickup_scheduled: 10,
-                      picked_up: 25,
-                      in_transit: 50,
-                      out_for_delivery: 75,
-                      delivered: 100,
-                    };
-                    setProgress(statusProgressMap[data.tracking.status] || 0);
-                    dataFetched = true;
-                }
-            } catch (err) {
-                console.log("API failed, falling back to mock");
+          try {
+            const data = await trackingApi.track(awb);
+            if (data.tracking) {
+              setTrackingData(data.tracking);
+
+              // Set progress based on status
+              const statusProgressMap: Record<string, number> = {
+                pending: 0,
+                pickup_scheduled: 10,
+                picked_up: 25,
+                in_transit: 50,
+                out_for_delivery: 75,
+                delivered: 100,
+              };
+              setProgress(statusProgressMap[data.tracking.status] || 0);
+              dataFetched = true;
             }
-        }
-        
-        if (!dataFetched) {
-            // Fallback to mock data
-            const mockData = {
-                awb: awb || "AWB1234567890",
-                status: "in_transit",
-                currentLocation: "Mumbai, Maharashtra",
-                estimatedDelivery: "Tomorrow by 6 PM",
-                eta: "45",
-                driver: {
-                  name: "Rajesh Kumar",
-                  phone: "+91 98765 43210",
-                  vehicle: "MH 01 AB 1234",
-                },
-                pickup: {
-                  name: "FastFare Hub",
-                  address: "Logistics Park, Andheri East",
-                  city: "Mumbai",
-                  pincode: "400069",
-                },
-                delivery: {
-                  name: "Rohan Gupta",
-                  address: "123 Business Street",
-                  city: "Pune",
-                  pincode: "411001",
-                },
-                packages: [
-                  { id: 1, description: "Electronics", weight: "2.5 kg", quantity: 1 },
-                ],
-                timeline: [
-                  { status: "picked_up", location: "Mumbai Hub", time: "10:30 AM", date: "Today" },
-                  { status: "in_transit", location: "En route to Pune", time: "12:15 PM", date: "Today" },
-                ],
-            };
-            setTrackingData(mockData);
-            setProgress(50);
+          } catch (err) {
+            // API failed — no data available
+          }
         }
 
       } catch (error) {

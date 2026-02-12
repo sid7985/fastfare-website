@@ -186,7 +186,6 @@ export const useFleetData = () => {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('🔌 Fleet tracking connected to backend');
       socket.emit('join_dashboard');
     });
 
@@ -221,7 +220,7 @@ export const useFleetData = () => {
           mergeDrivers();
         }
       })
-      .catch(err => console.log('Could not fetch initial driver positions:', err));
+      .catch(() => { /* Initial fetch failed — will rely on socket */ });
 
     return () => {
       socket.disconnect();
