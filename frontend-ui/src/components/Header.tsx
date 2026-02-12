@@ -42,7 +42,7 @@ interface HeaderProps {
   onMobileMenuToggle?: () => void;
 }
 
-const Header = ({ mobileMenuOpen, onMobileMenuToggle }: HeaderProps = {}) => {
+const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: HeaderProps = {}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [localMobileMenuOpen, setLocalMobileMenuOpen] = useState(false);
@@ -50,6 +50,14 @@ const Header = ({ mobileMenuOpen, onMobileMenuToggle }: HeaderProps = {}) => {
   const user = authApi.getCurrentUser();
   const [searchQuery, setSearchQuery] = useState("");
   const { balance } = useWallet();
+
+  // Unified mobile menu state: use prop if provided (authenticated layout), else local
+  const mobileMenuOpen = onMobileMenuToggle ? (propMobileMenuOpen ?? false) : localMobileMenuOpen;
+  const toggleMobileMenu = onMobileMenuToggle || (() => setLocalMobileMenuOpen(prev => !prev));
+  const closeMobileMenu = () => {
+    if (onMobileMenuToggle && propMobileMenuOpen) onMobileMenuToggle();
+    setLocalMobileMenuOpen(false);
+  };
 
   const navLinks = [
     { label: "Solutions", href: "#solutions", dropdown: true },
@@ -102,13 +110,13 @@ const Header = ({ mobileMenuOpen, onMobileMenuToggle }: HeaderProps = {}) => {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between gap-4">
         <div className="flex items-center gap-2 shrink-0">
-          {/* Mobile Menu Button - Only for authenticated users */}
+          {/* Mobile Menu Button - for authenticated dashboard sidebar */}
           {isAuthenticated && onMobileMenuToggle && (
             <Button
               variant="ghost"
               size="icon"
               className="lg:hidden"
-              onClick={onMobileMenuToggle}
+              onClick={toggleMobileMenu}
               title="Toggle Menu"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -306,13 +314,15 @@ const Header = ({ mobileMenuOpen, onMobileMenuToggle }: HeaderProps = {}) => {
           </>
         )}
 
-        {/* Mobile Menu Toggle */}
-        <button
-          className="md:hidden p-2 ml-auto"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        {/* Mobile Menu Toggle - public pages */}
+        {!isAuthenticated && (
+          <button
+            className="md:hidden p-2 ml-auto"
+            onClick={toggleMobileMenu}
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        )}
       </div>
 
       {/* Mobile Menu */}
@@ -331,12 +341,12 @@ const Header = ({ mobileMenuOpen, onMobileMenuToggle }: HeaderProps = {}) => {
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </form>
-                <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                <Link to="/dashboard" onClick={closeMobileMenu}>
                   <Button variant="ghost" className="w-full justify-start">
                     <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
                   </Button>
                 </Link>
-                <Link to="/shipments" onClick={() => setMobileMenuOpen(false)}>
+                <Link to="/shipments" onClick={closeMobileMenu}>
                   <Button variant="ghost" className="w-full justify-start">
                     <Grid className="mr-2 h-4 w-4" /> Shipments
                   </Button>
@@ -355,16 +365,16 @@ const Header = ({ mobileMenuOpen, onMobileMenuToggle }: HeaderProps = {}) => {
                     key={link.label}
                     to={link.href}
                     className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={closeMobileMenu}
                   >
                     {link.label}
                   </Link>
                 ))}
                 <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
+                  <Link to="/login" onClick={closeMobileMenu}>
                     <Button variant="ghost" className="w-full">Log in</Button>
                   </Link>
-                  <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
+                  <Link to="/register" onClick={closeMobileMenu}>
                     <Button className="w-full gradient-primary">Get Started Free</Button>
                   </Link>
                 </div>

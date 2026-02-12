@@ -259,15 +259,15 @@ const UserOrders = () => {
           {/* Orders Table */}
           {!loading && (
             <Card>
-              <CardContent className="p-0">
+              <CardContent className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>AWB</TableHead>
                       <TableHead>Route</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead className="hidden sm:table-cell">Type</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Driver</TableHead>
+                      <TableHead className="hidden md:table-cell">Driver</TableHead>
                       <TableHead className="text-right">Cost</TableHead>
                       <TableHead className="text-center">Actions</TableHead>
                     </TableRow>
@@ -300,11 +300,11 @@ const UserOrders = () => {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden sm:table-cell">
                             <span className="text-sm capitalize">{order.contentType || "—"}</span>
                           </TableCell>
                           <TableCell>{getStatusBadge(order.status)}</TableCell>
-                          <TableCell>
+                          <TableCell className="hidden md:table-cell">
                             {order.assignedDriverName ? (
                               <div className="flex flex-col text-sm">
                                 <span className="font-medium flex items-center gap-1">

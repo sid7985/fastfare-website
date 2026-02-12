@@ -125,7 +125,7 @@ const PartnerDashboard = () => {
                                     <th className="px-6 py-4 uppercase text-xs tracking-wider">ID</th>
                                     <th className="px-6 py-4 uppercase text-xs tracking-wider">Destination</th>
                                     <th className="px-6 py-4 uppercase text-xs tracking-wider">Status</th>
-                                    <th className="px-6 py-4 uppercase text-xs tracking-wider">ETA</th>
+                                    <th className="px-6 py-4 uppercase text-xs tracking-wider hidden sm:table-cell">ETA</th>
                                     <th className="px-6 py-4 uppercase text-xs tracking-wider text-right">Action</th>
                                 </tr>
                             </thead>
@@ -139,7 +139,7 @@ const PartnerDashboard = () => {
                                                 • {item.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-gray-600">{item.eta}</td>
+                                        <td className="px-6 py-4 text-gray-600 hidden sm:table-cell whitespace-nowrap">{item.eta}</td>
                                         <td className="px-6 py-4 text-right">
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-600">
                                                 <ChevronRight className="h-4 w-4" />

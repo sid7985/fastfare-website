@@ -246,16 +246,16 @@ const PartnerOrders = () => {
 
           {!loading && (
             <Card>
-              <CardContent className="p-0">
+              <CardContent className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Parcel ID</TableHead>
-                      <TableHead>Barcode</TableHead>
+                      <TableHead className="hidden sm:table-cell">Barcode</TableHead>
                       <TableHead>Package</TableHead>
                       <TableHead>Receiver</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Scanned</TableHead>
+                      <TableHead className="hidden md:table-cell">Scanned</TableHead>
                       <TableHead className="text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -270,7 +270,7 @@ const PartnerOrders = () => {
                       filteredParcels.map((p) => (
                         <TableRow key={p._id}>
                           <TableCell className="font-mono text-sm font-medium">{p.parcelId}</TableCell>
-                          <TableCell className="font-mono text-sm">{p.barcode}</TableCell>
+                          <TableCell className="font-mono text-sm hidden sm:table-cell">{p.barcode}</TableCell>
                           <TableCell>{p.packageName || "—"}</TableCell>
                           <TableCell>
                             {p.receiver?.name ? (
@@ -283,7 +283,7 @@ const PartnerOrders = () => {
                             ) : "—"}
                           </TableCell>
                           <TableCell>{getStatusBadge(p.status)}</TableCell>
-                          <TableCell className="text-sm">{formatDate(p.scannedAt)}</TableCell>
+                          <TableCell className="text-sm hidden md:table-cell">{formatDate(p.scannedAt)}</TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-1">
                               <Button

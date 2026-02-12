@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,16 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const user = authApi.getCurrentUser();
+
+    // Lock body scroll when mobile sidebar is open
+    useEffect(() => {
+        if (mobileMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [mobileMenuOpen]);
 
     const handleLogout = () => {
         authApi.logout();
@@ -85,7 +95,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 )}
             >
                 {/* Page Content */}
-                <main className="p-4 lg:p-6">{children}</main>
+                <main className="p-4 lg:p-6 pt-2">{children}</main>
             </div>
         </div>
     );

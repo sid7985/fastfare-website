@@ -180,7 +180,7 @@ const ShipmentsList = () => {
       shipment.awb.toLowerCase().includes(searchQuery.toLowerCase()) ||
       shipment.delivery.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTab = filterByTab(shipment);
-    
+
     return matchesSearch && matchesTab;
   });
 
@@ -344,40 +344,41 @@ const ShipmentsList = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-          {/* Page Header */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold">Shipments</h1>
-              <p className="text-muted-foreground">
-                Manage your orders and shipments
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handlePrintManifest}>
-                <FileText className="h-4 w-4 mr-2" /> Print Manifest
-              </Button>
-              <Button
-                className="gradient-primary"
-                onClick={() => navigate("/shipment/new")}
-              >
-                <Plus className="h-4 w-4 mr-2" /> New Shipment
-              </Button>
-            </div>
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Shipments</h1>
+            <p className="text-muted-foreground">
+              Manage your orders and shipments
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handlePrintManifest}>
+              <FileText className="h-4 w-4 mr-2" /> Print Manifest
+            </Button>
+            <Button
+              className="gradient-primary"
+              onClick={() => navigate("/shipment/new")}
+            >
+              <Plus className="h-4 w-4 mr-2" /> New Shipment
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search shipments..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
           </div>
 
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search shipments..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            
+          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[150px] md:w-[180px] shrink-0">
                 <SelectValue placeholder="Filter Status" />
               </SelectTrigger>
               <SelectContent>
@@ -391,9 +392,9 @@ const ShipmentsList = () => {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Select value={carrierFilter} onValueChange={setCarrierFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[150px] md:w-[180px] shrink-0">
                 <SelectValue placeholder="Carrier" />
               </SelectTrigger>
               <SelectContent>
@@ -405,138 +406,139 @@ const ShipmentsList = () => {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" onClick={handleExport}>
+            <Button variant="outline" onClick={handleExport} className="shrink-0">
               <Download className="h-4 w-4 mr-2" /> Export
             </Button>
           </div>
-
-
-          {/* Shipments Table */}
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="cursor-pointer">
-                      <div className="flex items-center gap-1">
-                        Order ID <ArrowUpDown className="h-3 w-3" />
-                      </div>
-                    </TableHead>
-                    <TableHead>Route</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Carrier</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="cursor-pointer">
-                      <div className="flex items-center gap-1">
-                        Created <ArrowUpDown className="h-3 w-3" />
-                      </div>
-                    </TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredShipments.map((shipment) => {
-                    const StatusIcon = statusConfig[shipment.status]?.icon || Truck;
-                    return (
-                      <TableRow
-                        key={shipment.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/shipment/${shipment.id}`)}
-                      >
-                        <TableCell className="font-medium">
-                          {shipment.id}
-                          <div className="text-xs text-muted-foreground font-mono">{shipment.awb}</div>
-                        </TableCell>
-                        <TableCell>
-                           <div className="flex flex-col text-sm">
-                             <span className="truncate max-w-[100px]" title={shipment.pickup.city}>{shipment.pickup.city}</span>
-                             <span className="text-muted-foreground text-xs">to</span>
-                             <span className="truncate max-w-[100px]" title={shipment.delivery.city}>{shipment.delivery.city}</span>
-                           </div>
-                        </TableCell>
-                        <TableCell>{shipment.customer}</TableCell>
-                        <TableCell>{shipment.carrier}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={statusConfig[shipment.status]?.variant || "default"}
-                            className="gap-1 whitespace-nowrap"
-                          >
-                            <StatusIcon className="h-3 w-3" />
-                            {statusConfig[shipment.status]?.label || shipment.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground whitespace-nowrap">
-                          {shipment.createdAt}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          ₹{shipment.amount.toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              asChild
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/shipment/${shipment.id}`);
-                                }}
-                              >
-                                <Eye className="h-4 w-4 mr-2" /> View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/shipment/${shipment.id}/edit`);
-                                }}
-                              >
-                                <Edit className="h-4 w-4 mr-2" /> Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/returns/create?shipmentId=${shipment.id}`);
-                                }}
-                              >
-                                <RefreshCw className="h-4 w-4 mr-2" /> Create Return
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" /> Cancel
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-
-              {filteredShipments.length === 0 && (
-                <div className="text-center py-12">
-                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-1">No shipments found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Try adjusting your search or filters
-                  </p>
-                  <Button onClick={() => navigate("/shipment/new")}>
-                    <Plus className="h-4 w-4 mr-2" /> Create New Shipment
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
+
+
+        {/* Shipments Table */}
+        <Card>
+          <CardContent className="p-0 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="cursor-pointer">
+                    <div className="flex items-center gap-1">
+                      Order ID <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
+                  <TableHead>Route</TableHead>
+                  <TableHead className="hidden md:table-cell">Customer</TableHead>
+                  <TableHead className="hidden lg:table-cell">Carrier</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell cursor-pointer">
+                    <div className="flex items-center gap-1">
+                      Created <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredShipments.map((shipment) => {
+                  const StatusIcon = statusConfig[shipment.status]?.icon || Truck;
+                  return (
+                    <TableRow
+                      key={shipment.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => navigate(`/shipment/${shipment.id}`)}
+                    >
+                      <TableCell className="font-medium">
+                        {shipment.id}
+                        <div className="text-xs text-muted-foreground font-mono">{shipment.awb}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col text-sm">
+                          <span className="truncate max-w-[100px]" title={shipment.pickup.city}>{shipment.pickup.city}</span>
+                          <span className="text-muted-foreground text-xs">to</span>
+                          <span className="truncate max-w-[100px]" title={shipment.delivery.city}>{shipment.delivery.city}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{shipment.delivery.name}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{shipment.carrier}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={statusConfig[shipment.status]?.variant || "default"}
+                          className="gap-1 whitespace-nowrap"
+                        >
+                          <StatusIcon className="h-3 w-3" />
+                          {statusConfig[shipment.status]?.label || shipment.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap hidden md:table-cell">
+                        {shipment.createdAt}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        ₹{shipment.amount.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            asChild
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/shipment/${shipment.id}`);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-2" /> View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/shipment/${shipment.id}/edit`);
+                              }}
+                            >
+                              <Edit className="h-4 w-4 mr-2" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/returns/create?shipmentId=${shipment.id}`);
+                              }}
+                            >
+                              <RefreshCw className="h-4 w-4 mr-2" /> Create Return
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" /> Cancel
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+
+            {filteredShipments.length === 0 && (
+              <div className="text-center py-12">
+                <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-1">No shipments found</h3>
+                <p className="text-muted-foreground mb-4">
+                  Try adjusting your search or filters
+                </p>
+                <Button onClick={() => navigate("/shipment/new")}>
+                  <Plus className="h-4 w-4 mr-2" /> Create New Shipment
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </DashboardLayout>
   );
 };
