@@ -77,34 +77,34 @@ const BillingDashboard = () => {
   }, []);
 
   const recentTxns = walletData?.transactions || [];
-  const balance = walletData?.balance || 500000;
+  const balance = walletData?.balance !== undefined ? walletData.balance : 0;
 
   // Calculate this month's spend/earnings
   const currentMonth = new Date().getMonth();
   const monthlyAmount = recentTxns
     .filter((t: Transaction) => {
-        const isThisMonth = new Date(t.createdAt).getMonth() === currentMonth;
-        if (userRole === 'shipment_partner') {
-            return isThisMonth && t.amount > 0; // Sum earnings
-        }
-        return isThisMonth && t.amount < 0; // Sum spend
+      const isThisMonth = new Date(t.createdAt).getMonth() === currentMonth;
+      if (userRole === 'shipment_partner') {
+        return isThisMonth && t.amount > 0; // Sum earnings
+      }
+      return isThisMonth && t.amount < 0; // Sum spend
     })
     .reduce((sum: number, t: Transaction) => sum + Math.abs(t.amount), 0);
-    
+
   const stats = [
-    { 
-        label: userRole === 'shipment_partner' ? "Account Funds" : "Wallet Balance", 
-        value: "₹5,00,000", 
-        change: "+₹5,000", 
-        trend: "up", 
-        icon: Wallet 
+    {
+      label: userRole === 'shipment_partner' ? "Account Funds" : "Wallet Balance",
+      value: `₹${balance.toLocaleString()}`,
+      change: "+₹0.00",
+      trend: "neutral",
+      icon: Wallet
     },
-    { 
-        label: userRole === 'shipment_partner' ? "This Month's Earnings" : "This Month's Spend", 
-        value: `₹${monthlyAmount.toLocaleString()}`, // Dynamic value
-        change: "+12%", 
-        trend: "up", 
-        icon: TrendingUp 
+    {
+      label: userRole === 'shipment_partner' ? "This Month's Earnings" : "This Month's Spend",
+      value: `₹${monthlyAmount.toLocaleString()}`, // Dynamic value
+      change: "+12%",
+      trend: "up",
+      icon: TrendingUp
     },
     { label: "Pending Payments", value: "₹8,900", change: "2 invoices", trend: "neutral", icon: Clock },
     { label: "Credit Limit", value: "₹2,00,000", change: "₹1,54,770 used", trend: "neutral", icon: CreditCard },
@@ -267,8 +267,8 @@ const BillingDashboard = () => {
                 { type: "UPI", last4: "user@paytm", expiry: null, brand: "Paytm", icon: "📱" },
                 { type: "UPI", last4: "9876543210@ybl", expiry: null, brand: "PhonePe", icon: "📱" },
               ].map((method, index) => (
-                <div 
-                  key={index} 
+                <div
+                  key={index}
                   onClick={() => {
                     setSelectedPaymentMethod(index);
                     toast({
@@ -276,11 +276,10 @@ const BillingDashboard = () => {
                       description: `${method.type} - ${method.brand} selected as payment method`,
                     });
                   }}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${
-                    selectedPaymentMethod === index 
-                      ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${selectedPaymentMethod === index
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/20"
                       : "border-border hover:border-primary/50"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <Badge variant="outline" className="gap-1">

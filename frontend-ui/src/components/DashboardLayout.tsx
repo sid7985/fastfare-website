@@ -23,10 +23,14 @@ interface DashboardLayoutProps {
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     const navigate = useNavigate();
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+    const [sidebarHovered, setSidebarHovered] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const user = authApi.getCurrentUser();
+
+    // Sidebar expands on hover, collapses when mouse leaves
+    const effectiveCollapsed = sidebarCollapsed && !sidebarHovered;
 
     // Lock body scroll when mobile sidebar is open
     useEffect(() => {
@@ -64,10 +68,14 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             {/* Global Header */}
             <Header mobileMenuOpen={mobileMenuOpen} onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
 
-            {/* Desktop Sidebar */}
-            <div className="hidden lg:block">
+            {/* Desktop Sidebar — hover to expand */}
+            <div
+                className="hidden lg:block"
+                onMouseEnter={() => setSidebarHovered(true)}
+                onMouseLeave={() => setSidebarHovered(false)}
+            >
                 <DashboardSidebar
-                    collapsed={sidebarCollapsed}
+                    collapsed={effectiveCollapsed}
                     onCollapse={setSidebarCollapsed}
                 />
             </div>
@@ -91,7 +99,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <div
                 className={cn(
                     "transition-all duration-300",
-                    sidebarCollapsed ? "lg:pl-[72px]" : "lg:pl-[260px]"
+                    effectiveCollapsed ? "lg:pl-[72px]" : "lg:pl-[260px]"
                 )}
             >
                 {/* Page Content */}

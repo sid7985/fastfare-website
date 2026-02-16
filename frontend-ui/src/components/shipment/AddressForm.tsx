@@ -1,8 +1,10 @@
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2 } from "lucide-react";
 
 interface AddressData {
   name: string;
@@ -23,10 +25,58 @@ interface AddressFormProps {
   onChange: (data: AddressData) => void;
 }
 
+const indianStates = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand",
+  "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
+  "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Delhi", "Chandigarh", "Puducherry", "Jammu and Kashmir", "Ladakh",
+  "Andaman and Nicobar Islands", "Dadra and Nagar Haveli and Daman and Diu", "Lakshadweep",
+];
+
 const AddressForm = ({ type, data, onChange }: AddressFormProps) => {
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [pincodeError, setPincodeError] = useState("");
+
   const handleChange = (field: keyof AddressData, value: string | boolean) => {
     onChange({ ...data, [field]: value });
   };
+
+  // Auto-fill city & state from pincode using India Post API
+  const fetchPincodeDetails = useCallback(async (pincode: string) => {
+    if (pincode.length !== 6) return;
+    setPincodeLoading(true);
+    setPincodeError("");
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const json = await res.json();
+      if (json[0]?.Status === "Success" && json[0]?.PostOffice?.length > 0) {
+        const po = json[0].PostOffice[0];
+        onChange({
+          ...data,
+          pincode,
+          city: po.District || po.Division || "",
+          state: po.State || "",
+        });
+      } else {
+        setPincodeError("Invalid pincode");
+      }
+    } catch {
+      setPincodeError("Could not verify pincode");
+    } finally {
+      setPincodeLoading(false);
+    }
+  }, [data, onChange]);
+
+  // Trigger auto-fill when pincode reaches 6 digits
+  useEffect(() => {
+    if (data.pincode.length === 6) {
+      fetchPincodeDetails(data.pincode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.pincode]);
 
   return (
     <div className="space-y-6">
@@ -88,18 +138,33 @@ const AddressForm = ({ type, data, onChange }: AddressFormProps) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label htmlFor={`${type}-pincode`}>PIN Code *</Label>
-          <Input
-            id={`${type}-pincode`}
-            placeholder="6-digit PIN"
-            value={data.pincode}
-            onChange={(e) => handleChange("pincode", e.target.value)}
-          />
+          <div className="relative">
+            <Input
+              id={`${type}-pincode`}
+              placeholder="6-digit PIN"
+              value={data.pincode}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, "");
+                if (value.length <= 6) {
+                  handleChange("pincode", value);
+                }
+              }}
+              maxLength={6}
+              inputMode="numeric"
+            />
+            {pincodeLoading && (
+              <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+          {pincodeError && (
+            <p className="text-xs text-red-500">{pincodeError}</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor={`${type}-city`}>City *</Label>
           <Input
             id={`${type}-city`}
-            placeholder="City name"
+            placeholder="Auto-filled from PIN"
             value={data.city}
             onChange={(e) => handleChange("city", e.target.value)}
           />
@@ -111,17 +176,14 @@ const AddressForm = ({ type, data, onChange }: AddressFormProps) => {
             onValueChange={(value) => handleChange("state", value)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select state" />
+              <SelectValue placeholder="Auto-filled from PIN" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="maharashtra">Maharashtra</SelectItem>
-              <SelectItem value="delhi">Delhi</SelectItem>
-              <SelectItem value="karnataka">Karnataka</SelectItem>
-              <SelectItem value="tamil-nadu">Tamil Nadu</SelectItem>
-              <SelectItem value="gujarat">Gujarat</SelectItem>
-              <SelectItem value="rajasthan">Rajasthan</SelectItem>
-              <SelectItem value="west-bengal">West Bengal</SelectItem>
-              <SelectItem value="telangana">Telangana</SelectItem>
+              {indianStates.map((state) => (
+                <SelectItem key={state} value={state}>
+                  {state}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

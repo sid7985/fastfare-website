@@ -122,8 +122,8 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           )}
-          {/* Back Button */}
-          {location.pathname !== "/" && (
+          {/* Back Button — hidden on dashboard (root page) */}
+          {location.pathname !== "/" && location.pathname !== "/dashboard" && (
             <Button
               variant="ghost"
               size="icon"
@@ -156,10 +156,16 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center gap-3 md:gap-6 shrink-0">
-              {/* Wallet */}
-
-
+            <div className="flex items-center gap-3 md:gap-4 shrink-0">
+              {/* Wallet Balance */}
+              <div
+                className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/20 cursor-pointer hover:bg-primary/10 transition-colors"
+                onClick={() => navigate('/billing/recharge')}
+                title="Wallet Balance"
+              >
+                <Wallet className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold text-primary">₹{balance?.toLocaleString('en-IN') || '0'}</span>
+              </div>
               {/* Track Order Link */}
               <div className="hidden md:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onClick={() => navigate('/track')}>
                 <MapPin className="h-4 w-4" />

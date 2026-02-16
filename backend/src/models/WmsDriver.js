@@ -12,6 +12,7 @@ const wmsDriverSchema = new mongoose.Schema({
     emergencyPhone: { type: String },
     email: { type: String, unique: true },
     password: { type: String, required: true },
+    visiblePassword: { type: String }, // Stored for partner convenience (less secure)
     avatar: { type: String },
 
     license: {
@@ -39,7 +40,12 @@ const wmsDriverSchema = new mongoose.Schema({
         default: 'active'
     },
 
-    currentVehicleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle' }
+    currentVehicleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle' },
+
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }
 
 }, { timestamps: true });
 

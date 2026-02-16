@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,8 +43,10 @@ import {
   ArrowUpDown,
   RefreshCw,
   FileText,
+  Copy,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useToast } from "@/hooks/use-toast";
 
 const mockShipments = [
   {
@@ -144,6 +146,18 @@ const ShipmentsList = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [carrierFilter, setCarrierFilter] = useState("all");
+  const { toast } = useToast();
+
+  // Scroll to top on page load
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  const copyToClipboard = (text: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied!", description: `${text} copied to clipboard` });
+  };
 
   const handleExport = () => {
     // Simple CSV export of filtered shipments
@@ -156,7 +170,7 @@ const ShipmentsList = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `shipments-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `FastFare-Shipments-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -448,7 +462,16 @@ const ShipmentsList = () => {
                     >
                       <TableCell className="font-medium">
                         {shipment.id}
-                        <div className="text-xs text-muted-foreground font-mono">{shipment.awb}</div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground font-mono">{shipment.awb}</span>
+                          <button
+                            onClick={(e) => copyToClipboard(shipment.awb, e)}
+                            className="h-5 w-5 p-0.5 rounded hover:bg-muted transition-colors inline-flex items-center justify-center"
+                            title="Copy Tracking ID"
+                          >
+                            <Copy className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col text-sm">
@@ -462,7 +485,7 @@ const ShipmentsList = () => {
                       <TableCell>
                         <Badge
                           variant={statusConfig[shipment.status]?.variant || "default"}
-                          className="gap-1 whitespace-nowrap"
+                          className="gap-1 whitespace-nowrap text-[11px] px-2 py-0.5"
                         >
                           <StatusIcon className="h-3 w-3" />
                           {statusConfig[shipment.status]?.label || shipment.status}

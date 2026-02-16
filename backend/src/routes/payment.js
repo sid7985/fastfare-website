@@ -57,7 +57,7 @@ router.post('/create-order', protect, async (req, res) => {
             keyId: process.env.RAZORPAY_KEY_ID
         });
     } catch (error) {
-        console.error('Create order error:', error);
+        console.error('Create order error:', error.response ? error.response.data : error);
         res.status(500).json({ error: 'Failed to create order' });
     }
 });
@@ -128,7 +128,7 @@ router.get('/wallet', protect, async (req, res) => {
             .limit(20);
 
         res.json({
-            balance: 500000, // user.walletBalance,
+            balance: user.walletBalance || 0,
             transactions: transactions.map(t => ({
                 id: t._id,
                 type: t.type,

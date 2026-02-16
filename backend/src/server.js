@@ -33,6 +33,8 @@ import partnerAuthRoutes from './routes/partner-auth.js';
 import parcelRoutes from './routes/parcels.js';
 import mobileTripsRoutes from './routes/mobile-trips.js';
 import driverLocationsRoutes from './routes/driver-locations.js';
+import partnerTeamRoutes from './routes/partner-team.js';
+import scanPartnerAuthRoutes from './routes/scan-partner-auth.js';
 
 // Socket handler
 import { locationSocket } from './socket/location.socket.js';
@@ -115,6 +117,8 @@ app.use('/api/parcels', parcelRoutes);
 app.use('/api/trips', mobileTripsRoutes);
 app.use('/api/driver-locations', driverLocationsRoutes);
 app.use('/api/tracking', driverLocationsRoutes);
+app.use('/api/partner-team', partnerTeamRoutes);
+app.use('/api/scan-partner-auth', scanPartnerAuthRoutes);
 
 // ─── Settlement Engine Routes ───
 app.use('/api/settlement', settlementRoutes);

@@ -98,6 +98,13 @@ const userSchema = new mongoose.Schema({
         min: 0,
         max: 100
     },
+    resetPasswordToken: String,
+    resetPasswordExpires: Date,
+    notificationPreferences: {
+        emailShipmentUpdates: { type: Boolean, default: true },
+        emailBilling: { type: Boolean, default: true },
+        emailMarketing: { type: Boolean, default: false },
+    },
     createdAt: {
         type: Date,
         default: Date.now

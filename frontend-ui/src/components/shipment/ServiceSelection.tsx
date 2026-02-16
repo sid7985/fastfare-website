@@ -63,13 +63,6 @@ const carriers = [
 
 const serviceTypes = [
   {
-    id: "standard",
-    name: "Standard Delivery",
-    description: "Regular delivery within 3-5 business days",
-    icon: Truck,
-    multiplier: 1,
-  },
-  {
     id: "express",
     name: "Express Delivery",
     description: "Guaranteed within 12 hours",
@@ -77,11 +70,11 @@ const serviceTypes = [
     multiplier: 1.5,
   },
   {
-    id: "same-day",
-    name: "Same Day Delivery",
-    description: "Within 24 hours (select cities)",
-    icon: Clock,
-    multiplier: 2.5,
+    id: "standard",
+    name: "Standard Delivery",
+    description: "Regular delivery within 3-5 business days",
+    icon: Truck,
+    multiplier: 1,
   },
 ];
 
@@ -253,25 +246,6 @@ const ServiceSelection = ({ data, onChange }: ServiceSelectionProps) => {
                 <span className="font-medium">Signature Required</span>
                 <span className="text-sm text-muted-foreground block">
                   Confirm delivery with signature (+₹19)
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={cn(
-              "cursor-pointer transition-all",
-              data.scheduledPickup && "border-primary bg-primary/5"
-            )}
-            onClick={() => handleChange("scheduledPickup", !data.scheduledPickup)}
-          >
-            <CardContent className="p-4 flex items-center gap-3">
-              <Checkbox checked={data.scheduledPickup} />
-              <Calendar className="h-5 w-5 text-primary" />
-              <div>
-                <span className="font-medium">Schedule Pickup</span>
-                <span className="text-sm text-muted-foreground block">
-                  Choose your preferred pickup time
                 </span>
               </div>
             </CardContent>

@@ -1,60 +1,80 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { API_BASE_URL } from "@/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   User,
   Plus,
-  Upload,
   X,
   CheckCircle,
-  Trash2,
   Loader2,
   Phone,
-  CreditCard,
   IdCard,
+  Copy,
+  Key,
+  AlertCircle,
+  XCircle,
+  Eye,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { fleetApi, Driver, DriverFormData } from "@/lib/fleetApi";
+
+interface WmsDriver {
+  _id: string;
+  driverId: string;
+  name: string;
+  phone: string;
+  license?: { number?: string };
+  status: string;
+  createdAt: string;
+}
+
+interface Credentials {
+  id: string;
+  password: string;
+}
+
+const getHeaders = () => {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+};
 
 const DriversTab = () => {
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [drivers, setDrivers] = useState<WmsDriver[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [showCredentials, setShowCredentials] = useState(false);
+  const [credentials, setCredentials] = useState<Credentials | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<DriverFormData>({
-    fullName: "",
-    mobile: "",
-    dlNo: "",
-    aadhaar: "",
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    licenseNumber: "",
   });
-
-  const [formErrors, setFormErrors] = useState({
-    mobile: "",
-    aadhaar: "",
-  });
-
-  const isAdmin = JSON.parse(localStorage.getItem("user") || "{}")?.role === "admin";
 
   useEffect(() => {
     fetchDrivers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchDrivers = async () => {
     try {
       setLoading(true);
-      const data = await fleetApi.getDrivers();
-      setDrivers(data.drivers);
+      const response = await fetch(`${API_BASE_URL}/api/partner-team/drivers`, {
+        headers: getHeaders(),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setDrivers(data.drivers || []);
+      }
     } catch (error) {
       console.error("Error fetching drivers:", error);
       toast({
@@ -67,83 +87,13 @@ const DriversTab = () => {
     }
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!["image/jpeg", "image/jpg", "image/png"].includes(file.type)) {
-      toast({
-        title: "Invalid file type",
-        description: "Only JPG and PNG images are allowed",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Maximum file size is 5MB",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSelectedPhoto(file);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPhotoPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const validateMobile = (value: string) => {
-    if (value && !/^[6-9]\d{9}$/.test(value)) {
-      return "Must be a valid 10-digit Indian mobile number";
-    }
-    return "";
-  };
-
-  const validateAadhaar = (value: string) => {
-    if (value && !/^\d{12}$/.test(value)) {
-      return "Must be exactly 12 digits";
-    }
-    return "";
-  };
-
-  const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, "").slice(0, 10);
-    setFormData({ ...formData, mobile: value });
-    setFormErrors({ ...formErrors, mobile: validateMobile(value) });
-  };
-
-  const handleAadhaarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, "").slice(0, 12);
-    setFormData({ ...formData, aadhaar: value });
-    setFormErrors({ ...formErrors, aadhaar: validateAadhaar(value) });
-  };
-
-  const maskAadhaar = (aadhaar: string) => {
-    if (!aadhaar || aadhaar.length < 12) return aadhaar;
-    return `XXXX-XXXX-${aadhaar.slice(-4)}`;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate all fields
-    const mobileError = validateMobile(formData.mobile);
-    const aadhaarError = validateAadhaar(formData.aadhaar);
-
-    if (mobileError || aadhaarError) {
-      setFormErrors({ mobile: mobileError, aadhaar: aadhaarError });
-      return;
-    }
-
-    if (!formData.fullName || !formData.mobile || !formData.dlNo || !formData.aadhaar) {
+    if (!formData.name || !formData.phone) {
       toast({
         title: "Missing fields",
-        description: "Please fill all required fields",
+        description: "Name and phone are required",
         variant: "destructive",
       });
       return;
@@ -151,22 +101,35 @@ const DriversTab = () => {
 
     try {
       setSubmitting(true);
-      await fleetApi.addDriver({
-        ...formData,
-        photo: selectedPhoto || undefined,
+      const response = await fetch(`${API_BASE_URL}/api/partner-team/drivers`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(formData),
       });
-      toast({
-        title: "Success",
-        description: "Driver added successfully",
-      });
-      setShowForm(false);
-      resetForm();
-      fetchDrivers();
+      const data = await response.json();
+
+      if (data.success) {
+        // Show credentials modal
+        setCredentials(data.credentials);
+        setShowCredentials(true);
+        setShowForm(false);
+        setFormData({ name: "", phone: "", licenseNumber: "" });
+        fetchDrivers();
+        toast({
+          title: "Driver Created",
+          description: `${data.driver.driverId} created successfully`,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to create driver",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to add driver";
       toast({
         title: "Error",
-        description: message,
+        description: "Failed to create driver",
         variant: "destructive",
       });
     } finally {
@@ -174,23 +137,77 @@ const DriversTab = () => {
     }
   };
 
-  const resetForm = () => {
-    setFormData({ fullName: "", mobile: "", dlNo: "", aadhaar: "" });
-    setSelectedPhoto(null);
-    setPhotoPreview(null);
-    setFormErrors({ mobile: "", aadhaar: "" });
+  const handleDeactivate = async (id: string) => {
+    if (!confirm("Are you sure you want to deactivate this driver?")) return;
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/partner-team/drivers/${id}`,
+        { method: "DELETE", headers: getHeaders() }
+      );
+      const data = await response.json();
+      if (data.success) {
+        toast({ title: "Success", description: "Driver deactivated" });
+        fetchDrivers();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to deactivate",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this driver?")) return;
+  const handleViewCredentials = async (id: string) => {
     try {
-      await fleetApi.deleteDriver(id);
-      toast({ title: "Success", description: "Driver deleted" });
-      fetchDrivers();
+      const response = await fetch(
+        `${API_BASE_URL}/api/partner-team/drivers/${id}/credentials`,
+        { headers: getHeaders() }
+      );
+      const data = await response.json();
+      if (data.success) {
+        setCredentials(data.credentials);
+        setShowCredentials(true);
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to fetch credentials",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to delete";
-      toast({ title: "Error", description: message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to fetch credentials",
+        variant: "destructive",
+      });
     }
+  };
+
+  const handleReactivate = async (id: string) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/partner-team/drivers/${id}/reactivate`,
+        { method: "PUT", headers: getHeaders() }
+      );
+      const data = await response.json();
+      if (data.success) {
+        toast({ title: "Success", description: "Driver reactivated" });
+        fetchDrivers();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reactivate",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copyToClipboard = async (text: string, field: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
   };
 
   const getInitials = (name: string) => {
@@ -200,6 +217,28 @@ const DriversTab = () => {
       .join("")
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  const getStatusBadge = (status: string) => {
+    if (status === "active") {
+      return (
+        <Badge variant="secondary" className="bg-green-100 text-green-800">
+          <CheckCircle className="h-3 w-3 mr-1" /> Active
+        </Badge>
+      );
+    }
+    if (status === "terminated") {
+      return (
+        <Badge variant="secondary" className="bg-red-100 text-red-800">
+          <XCircle className="h-3 w-3 mr-1" /> Inactive
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="secondary" className="bg-gray-100 text-gray-800">
+        {status}
+      </Badge>
+    );
   };
 
   return (
@@ -212,7 +251,8 @@ const DriversTab = () => {
             Drivers
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage your driver team
+            Manage your driver team — each driver gets a unique ID (DRV-XXXX)
+            for app login
           </p>
         </div>
         <Button onClick={() => setShowForm(true)} className="gap-2">
@@ -230,104 +270,65 @@ const DriversTab = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Label htmlFor="name">Full Name *</Label>
                   <Input
-                    id="fullName"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     placeholder="Enter driver's full name"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="mobile">Mobile Number *</Label>
+                  <Label htmlFor="phone">Phone Number *</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="mobile"
-                      value={formData.mobile}
-                      onChange={handleMobileChange}
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          phone: e.target.value
+                            .replace(/\D/g, "")
+                            .slice(0, 10),
+                        })
+                      }
                       placeholder="9876543210"
                       className="pl-10"
                       required
                     />
                   </div>
-                  {formErrors.mobile && (
-                    <p className="text-xs text-red-500">{formErrors.mobile}</p>
-                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dlNo">DL Number *</Label>
+                  <Label htmlFor="licenseNumber">License Number (optional)</Label>
                   <div className="relative">
                     <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="dlNo"
-                      value={formData.dlNo}
-                      onChange={(e) => setFormData({ ...formData, dlNo: e.target.value.toUpperCase() })}
+                      id="licenseNumber"
+                      value={formData.licenseNumber}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          licenseNumber: e.target.value.toUpperCase(),
+                        })
+                      }
                       placeholder="MH0120190001234"
                       className="pl-10"
-                      required
                     />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="aadhaar">Aadhaar Number *</Label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="aadhaar"
-                      value={formData.aadhaar}
-                      onChange={handleAadhaarChange}
-                      placeholder="123456789012"
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                  {formErrors.aadhaar && (
-                    <p className="text-xs text-red-500">{formErrors.aadhaar}</p>
-                  )}
                 </div>
               </div>
 
-              {/* Photo Upload */}
-              <div className="space-y-2">
-                <Label>Photo (Optional, JPG/PNG, max 5MB)</Label>
-                <div className="flex items-center gap-4">
-                  {photoPreview ? (
-                    <div className="relative">
-                      <Avatar className="h-20 w-20">
-                        <AvatarImage src={photoPreview} />
-                      </Avatar>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedPhoto(null);
-                          setPhotoPreview(null);
-                        }}
-                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="h-20 w-20 border-2 border-dashed rounded-full flex items-center justify-center cursor-pointer hover:border-primary transition-colors"
-                    >
-                      <Upload className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png"
-                    onChange={handlePhotoChange}
-                    className="hidden"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Click to upload driver photo
-                  </p>
-                </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                <p className="text-sm text-blue-800">
+                  A unique Driver ID (DRV-XXXX) and password will be
+                  auto-generated. The credentials will be shown after
+                  creation — share them with the driver for app login.
+                </p>
               </div>
 
               <div className="flex gap-2 justify-end">
@@ -336,7 +337,7 @@ const DriversTab = () => {
                   variant="outline"
                   onClick={() => {
                     setShowForm(false);
-                    resetForm();
+                    setFormData({ name: "", phone: "", licenseNumber: "" });
                   }}
                 >
                   Cancel
@@ -345,16 +346,104 @@ const DriversTab = () => {
                   {submitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Adding...
+                      Creating...
                     </>
                   ) : (
-                    "Add Driver"
+                    "Create Driver"
                   )}
                 </Button>
               </div>
             </form>
           </CardContent>
         </Card>
+      )}
+
+      {/* Credentials Modal */}
+      {showCredentials && credentials && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Card className="w-full max-w-md mx-4 shadow-2xl">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5 text-primary" />
+                  Driver Credentials
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setShowCredentials(false);
+                    setCredentials(null);
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-sm text-amber-800">
+                  Use these credentials to log in to the driver app.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Driver ID</p>
+                    <p className="text-lg font-mono font-bold">
+                      {credentials.id}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(credentials.id, "id")}
+                  >
+                    {copiedField === "id" ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Password</p>
+                    <p className="text-lg font-mono font-bold">
+                      {credentials.password}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      copyToClipboard(credentials.password, "password")
+                    }
+                  >
+                    {copiedField === "password" ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setShowCredentials(false);
+                  setCredentials(null);
+                }}
+              >
+                Done
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Drivers List */}
@@ -378,41 +467,63 @@ const DriversTab = () => {
             <Card key={driver._id}>
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
-                  <Avatar className="h-16 w-16">
-                    {driver.photo ? (
-                      <AvatarImage src={driver.photo.startsWith('http') ? driver.photo : `${API_BASE_URL}/${driver.photo}`} />
-                    ) : null}
-                    <AvatarFallback className="text-lg">
-                      {getInitials(driver.fullName)}
+                  <Avatar className="h-14 w-14">
+                    <AvatarFallback className="text-lg bg-primary/10 text-primary">
+                      {getInitials(driver.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold truncate">{driver.fullName}</h3>
-                      <Badge variant="secondary" className="bg-green-100 text-green-800">
-                        <CheckCircle className="h-3 w-3 mr-1" /> Active
-                      </Badge>
+                      <h3 className="font-semibold truncate">{driver.name}</h3>
+                      {getStatusBadge(driver.status)}
                     </div>
                     <div className="space-y-1 text-sm text-muted-foreground">
-                      <p className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" /> {driver.mobile}
+                      <p className="flex items-center gap-1.5 font-mono text-primary font-semibold">
+                        <IdCard className="h-3 w-3" /> {driver.driverId}
                       </p>
-                      <p className="flex items-center gap-1">
-                        <IdCard className="h-3 w-3" /> {driver.dlNo}
+                      <p className="flex items-center gap-1.5">
+                        <Phone className="h-3 w-3" /> {driver.phone}
                       </p>
-                      <p className="flex items-center gap-1">
-                        <CreditCard className="h-3 w-3" /> {maskAadhaar(driver.aadhaar)}
-                      </p>
+                      {driver.license?.number &&
+                        driver.license.number !== "PENDING" && (
+                          <p className="flex items-center gap-1.5">
+                            <IdCard className="h-3 w-3" />{" "}
+                            {driver.license.number}
+                          </p>
+                        )}
                     </div>
                   </div>
-                  <Button
-                      size="icon"
-                      variant="ghost"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => handleDelete(driver._id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <div>
+                    {driver.status === "active" ? (
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-primary hover:text-primary hover:bg-primary/10 text-xs w-full justify-start"
+                          onClick={() => handleViewCredentials(driver._id)}
+                        >
+                          <Eye className="h-3 w-3 mr-2" /> View Credentials
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs w-full justify-start"
+                          onClick={() => handleDeactivate(driver._id)}
+                        >
+                          <XCircle className="h-3 w-3 mr-2" /> Deactivate
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50 text-xs"
+                        onClick={() => handleReactivate(driver._id)}
+                      >
+                        Reactivate
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

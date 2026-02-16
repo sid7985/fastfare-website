@@ -28,12 +28,19 @@ const recentShipments = [
 ];
 
 const OrganizationDashboard = () => {
-  // Mock state for onboarding progress
-  const [showOnboarding] = useState(true);
+  // Onboarding progress — auto-hide when all steps completed
+  const [showOnboarding, setShowOnboarding] = useState(true);
   const [kycCompleted] = useState(false);
   const [walletRecharged] = useState(false);
   const [firstOrderPlaced] = useState(false);
   const [dateRange, setDateRange] = useState("today");
+
+  // Auto-remove Getting Started when all steps are completed
+  useEffect(() => {
+    if (kycCompleted && walletRecharged && firstOrderPlaced) {
+      setShowOnboarding(false);
+    }
+  }, [kycCompleted, walletRecharged, firstOrderPlaced]);
 
   const [stats, setStats] = useState([
     { label: "Total Shipments", value: "1,234", change: "+12%", trend: "up", icon: Package },
@@ -74,8 +81,8 @@ const OrganizationDashboard = () => {
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Welcome back, {user?.businessName || "Business"}</h1>
-            <p className="text-muted-foreground">Here's what's happening with your shipments today.</p>
+            <h1 className="text-2xl font-bold">Welcome back, FastFare</h1>
+            <p className="text-sm text-muted-foreground">Here's what's happening with your shipments today.</p>
           </div>
           <div className="flex gap-3">
             <Select value={dateRange} onValueChange={setDateRange}>
@@ -97,7 +104,24 @@ const OrganizationDashboard = () => {
           </div>
         </div>
 
-        {/* Getting Started Section (for new users) */}
+        {/* Quick Actions — at top for easy access */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {filteredQuickActions.map((action) => (
+            <Link key={action.label} to={action.href}>
+              <Button
+                variant="outline"
+                className="w-full h-auto flex-row gap-3 py-3 px-4 hover:border-primary justify-start"
+              >
+                <div className={`h-9 w-9 rounded-lg ${action.color} flex items-center justify-center flex-shrink-0`}>
+                  <action.icon className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-sm font-medium">{action.label}</span>
+              </Button>
+            </Link>
+          ))}
+        </div>
+
+        {/* Getting Started Section (for new users — auto-hidden when all steps complete) */}
         {showOnboarding && (
           <GettingStarted
             showWelcomeOffer={true}
@@ -144,9 +168,9 @@ const OrganizationDashboard = () => {
                       {stat.change}
                     </Badge>
                   </div>
-                  <div className="mt-4">
-                    <p className="text-3xl font-bold">{stat.value}</p>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  <div className="mt-3">
+                    <p className="text-2xl font-bold">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -203,31 +227,8 @@ const OrganizationDashboard = () => {
             </Card>
           </div>
 
-          {/* Quick Actions & Alerts */}
+          {/* Alerts */}
           <div className="space-y-6">
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  {filteredQuickActions.map((action) => (
-                    <Link key={action.label} to={action.href}>
-                      <Button
-                        variant="outline"
-                        className="w-full h-auto flex-col gap-2 py-4 hover:border-primary"
-                      >
-                        <div className={`h-10 w-10 rounded-lg ${action.color} flex items-center justify-center`}>
-                          <action.icon className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-xs">{action.label}</span>
-                      </Button>
-                    </Link>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
 
 
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { API_BASE_URL } from "@/config";
 import { authApi } from "@/lib/api";
 
@@ -10,15 +10,15 @@ interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
-    const [balance, setBalance] = useState(500000);
+export const WalletProvider = ({ children }: { children: ReactNode }) => {
+    const [balance, setBalance] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
 
     const refreshBalance = async () => {
         try {
             const token = localStorage.getItem("token");
             if (!token) {
-                setBalance(500000);
+                setBalance(0);
                 return;
             }
 
@@ -41,7 +41,7 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
         if (authApi.isAuthenticated()) {
             refreshBalance();
         } else {
-            setBalance(500000);
+            setBalance(0);
             setIsLoading(false);
         }
     }, []);

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
     Truck, CheckCircle, Package, Wallet, ChevronRight,
-    Warehouse, MapPin, RotateCcw, Box, TrendingUp, ArrowUpRight
+    Warehouse, MapPin, RotateCcw, Box, TrendingUp, ArrowUpRight, Users
 } from "lucide-react";
 import { authApi } from "@/lib/api";
 
@@ -19,6 +19,7 @@ const stats = [
 ];
 
 const wmsActions = [
+    { label: "Team Management", desc: "Drivers & scan partners", icon: Users, href: "/partner/team", color: "from-rose-500 to-rose-600" },
     { label: "Fleet Management", desc: "Vehicles & drivers", icon: Truck, href: "/wms/fleet", color: "from-blue-500 to-blue-600" },
     { label: "Inventory", desc: "Stock management", icon: Package, href: "/wms/inventory", color: "from-emerald-500 to-emerald-600" },
     { label: "Inbound", desc: "Receiving dock", icon: Box, href: "/wms/inbound", color: "from-purple-500 to-purple-600" },

@@ -42,9 +42,9 @@ const initialPackageData = {
       name: "",
       quantity: 1,
       weight: 0.5,
-      length: 10,
-      width: 10,
-      height: 10,
+      length: 50,
+      width: 50,
+      height: 50,
       value: 0,
     },
   ],
@@ -56,7 +56,7 @@ const initialPackageData = {
 };
 
 const initialServiceData = {
-  serviceType: "standard",
+  serviceType: "express",
   carrier: "",
   insurance: false,
   fragileHandling: false,

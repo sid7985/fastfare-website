@@ -5,21 +5,50 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Mail, CheckCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/config";
 import logo from "@/assets/logo.png";
 import authBg from "@/assets/auth-bg.png";
 
 const ForgotPassword = () => {
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send reset email");
+      }
+
       setIsSubmitted(true);
-    }, 1500);
+
+      toast({
+        title: "Email Sent",
+        description: "Check your inbox for the password reset link.",
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Please try again";
+      toast({
+        title: "Request Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -42,7 +71,7 @@ const ForgotPassword = () => {
             </p>
           </div>
           <div className="text-sm text-white/60">
-            © 2024 FastFare. Secure password recovery.
+            © {new Date().getFullYear()} FastFare. Secure password recovery.
           </div>
         </div>
       </div>
@@ -77,7 +106,7 @@ const ForgotPassword = () => {
               <CardDescription>
                 {isSubmitted
                   ? `We've sent a password reset link to ${email}`
-                  : "No worries, we'll send you reset instructions."}
+                  : "Enter your email and we'll send you a link to reset your password."}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -87,7 +116,7 @@ const ForgotPassword = () => {
                     <label className="text-sm font-medium">Email</label>
                     <Input
                       type="email"
-                      placeholder="Enter your email"
+                      placeholder="Enter your registered email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -98,13 +127,16 @@ const ForgotPassword = () => {
                     className="w-full gradient-primary"
                     disabled={isLoading}
                   >
-                    {isLoading ? "Sending..." : "Reset password"}
+                    {isLoading ? "Sending..." : "Send Reset Link"}
                   </Button>
                 </form>
               ) : (
                 <div className="space-y-4">
                   <Button
-                    onClick={() => setIsSubmitted(false)}
+                    onClick={() => {
+                      setIsSubmitted(false);
+                      setIsLoading(false);
+                    }}
                     variant="outline"
                     className="w-full"
                   >
@@ -113,7 +145,10 @@ const ForgotPassword = () => {
                   <p className="text-center text-sm text-muted-foreground">
                     Didn't receive the email?{" "}
                     <button
-                      onClick={() => setIsSubmitted(false)}
+                      onClick={() => {
+                        setIsSubmitted(false);
+                        setIsLoading(false);
+                      }}
                       className="text-primary hover:underline"
                     >
                       Click to resend

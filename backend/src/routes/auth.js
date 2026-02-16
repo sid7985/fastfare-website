@@ -1,5 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
 
@@ -141,154 +143,274 @@ router.post('/logout', (req, res) => {
     res.json({ success: true, message: 'Logged out successfully' });
 });
 
-// Phone verification storage (tracks phone numbers being verified)
-const phoneVerificationStore = new Map();
 
-// Send OTP using Didit.me Phone Verification API
-router.post('/send-otp', async (req, res) => {
+// ============= Email Configuration =============
+
+// Create email transporter (configure via env vars)
+const createTransporter = () => {
+    return nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+        },
+    });
+};
+
+// Send email helper
+const sendEmail = async ({ to, subject, html }) => {
+    const transporter = createTransporter();
+    await transporter.sendMail({
+        from: `"FastFare" <${process.env.SMTP_USER || 'noreply@fastfare.org'}>`,
+        to,
+        subject,
+        html,
+    });
+};
+
+
+// ============= Forgot Password =============
+
+// Request password reset (sends email with reset link)
+router.post('/forgot-password', async (req, res) => {
     try {
-        const { phone } = req.body;
+        const { email } = req.body;
 
-        if (!phone || phone.length < 10) {
-            return res.status(400).json({ error: 'Valid phone number is required' });
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
         }
 
-        // Format phone number (add country code if not present)
-        const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
+        const user = await User.findOne({ email: email.toLowerCase() });
 
-        // Call Didit.me Send Phone Code API (v3)
-        const diditResponse = await fetch('https://verification.didit.me/v3/phone/send/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': process.env.DIDIT_API_KEY
-            },
-            body: JSON.stringify({
-                phone_number: formattedPhone,
-                options: {
-                    preferred_channel: 'sms',
-                    locale: 'en'
-                }
-            })
-        });
-
-        const diditData = await diditResponse.json();
-
-        if (!diditResponse.ok) {
-            console.error('Didit Send OTP Error:', diditData);
-            throw new Error(diditData.error || diditData.detail || 'Failed to send verification code');
+        if (!user) {
+            // Don't reveal if email exists — always return success
+            return res.json({
+                success: true,
+                message: 'If an account with that email exists, a password reset link has been sent.',
+            });
         }
 
-        // Store phone verification session
-        phoneVerificationStore.set(phone, {
-            formattedPhone,
-            sentAt: Date.now(),
-            attempts: 0
-        });
+        // Generate reset token
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
-        console.log(`[Didit] OTP sent to ${formattedPhone}`);
+        user.resetPasswordToken = hashedToken;
+        user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+        await user.save({ validateBeforeSave: false });
+
+        // Build reset URL
+        const frontendUrl = process.env.FRONTEND_URL || 'https://fastfare.org';
+        const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
+
+        // Send email
+        await sendEmail({
+            to: user.email,
+            subject: 'FastFare — Reset Your Password',
+            html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #011E41; font-size: 28px; margin: 0;">FastFare</h1>
+                    </div>
+                    <h2 style="color: #333; font-size: 20px;">Reset Your Password</h2>
+                    <p style="color: #666; line-height: 1.6;">
+                        Hello ${user.contactPerson || user.businessName},
+                    </p>
+                    <p style="color: #666; line-height: 1.6;">
+                        We received a request to reset your password. Click the button below to create a new password:
+                    </p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${resetUrl}" style="display: inline-block; background: #011E41; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">
+                            Reset Password
+                        </a>
+                    </div>
+                    <p style="color: #999; font-size: 13px; line-height: 1.5;">
+                        This link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+                    </p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+                    <p style="color: #999; font-size: 12px; text-align: center;">
+                        © ${new Date().getFullYear()} FastFare. All rights reserved.
+                    </p>
+                </div>
+            `,
+        });
 
         res.json({
             success: true,
-            message: 'Verification code sent successfully',
-            phone: formattedPhone
+            message: 'If an account with that email exists, a password reset link has been sent.',
         });
+
     } catch (error) {
-        console.error('Send OTP error:', error);
-        res.status(500).json({ error: error.message || 'Failed to send OTP' });
+        console.error('Forgot password error:', error);
+        res.status(500).json({ error: 'Failed to process password reset request' });
     }
 });
 
 
-// Verify OTP using Didit.me Check Phone Code API
-router.post('/verify-otp', async (req, res) => {
+// Reset password (using token from email)
+router.post('/reset-password', async (req, res) => {
     try {
-        const { phone, otp } = req.body;
+        const { token, email, newPassword } = req.body;
 
-        if (!phone || !otp) {
-            return res.status(400).json({ error: 'Phone and OTP are required' });
+        if (!token || !email || !newPassword) {
+            return res.status(400).json({ error: 'Token, email, and new password are required' });
         }
 
-        // Format phone number (add country code if not present)
-        const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
+        if (newPassword.length < 8) {
+            return res.status(400).json({ error: 'Password must be at least 8 characters' });
+        }
 
-        // Call Didit.me Check Phone Code API (v3)
-        const diditResponse = await fetch('https://verification.didit.me/v3/phone/check/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': process.env.DIDIT_API_KEY
-            },
-            body: JSON.stringify({
-                phone_number: formattedPhone,
-                code: otp
-            })
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+        const user = await User.findOne({
+            email: email.toLowerCase(),
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: { $gt: Date.now() },
         });
 
-        const diditData = await diditResponse.json();
-
-        if (!diditResponse.ok) {
-            console.error('Didit Verify OTP Error:', diditData);
-            throw new Error(diditData.error || diditData.detail || 'Invalid OTP');
-        }
-
-        // OTP verified successfully
-        console.log(`[Didit] Phone ${formattedPhone} verified successfully`);
-
-        // Clean up verification store
-        phoneVerificationStore.delete(phone);
-
-        // Find user by phone number
-        let user = await User.findOne({ phone });
-
         if (!user) {
-            // Also check with formatted phone
-            user = await User.findOne({ phone: formattedPhone });
+            return res.status(400).json({ error: 'Invalid or expired reset token' });
         }
 
-        if (!user) {
-            // User doesn't exist - return success but indicate registration needed
-            return res.json({
-                success: true,
-                verified: true,
-                userExists: false,
-                message: 'Phone verified. Please complete registration.',
-                phoneData: diditData
-            });
-        }
+        // Update password
+        user.password = newPassword;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
 
-        // Update user's phone verification status
-        if (user.kyc) {
-            user.kyc.phoneVerified = true;
-            await user.save();
-        }
-
-        // User exists - generate token and login
-        const token = generateToken(user._id);
+        // Send confirmation email
+        await sendEmail({
+            to: user.email,
+            subject: 'FastFare — Password Changed Successfully',
+            html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #011E41; font-size: 28px; margin: 0;">FastFare</h1>
+                    </div>
+                    <h2 style="color: #333; font-size: 20px;">Password Changed</h2>
+                    <p style="color: #666; line-height: 1.6;">
+                        Hello ${user.contactPerson || user.businessName},
+                    </p>
+                    <p style="color: #666; line-height: 1.6;">
+                        Your password has been changed successfully. If you did not make this change, please contact our support team immediately.
+                    </p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+                    <p style="color: #999; font-size: 12px; text-align: center;">
+                        © ${new Date().getFullYear()} FastFare. All rights reserved.
+                    </p>
+                </div>
+            `,
+        });
 
         res.json({
             success: true,
-            verified: true,
-            userExists: true,
-            user: {
-                id: user._id,
-                businessName: user.businessName,
-                email: user.email,
-                phone: user.phone,
-                businessType: user.businessType,
-                gstin: user.gstin,
-                contactPerson: user.contactPerson,
-                role: user.role
+            message: 'Password has been reset successfully. You can now log in.',
+        });
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ error: 'Failed to reset password' });
+    }
+});
+
+
+// ============= Notification Email Preferences =============
+
+// Get notification preferences
+router.get('/notification-preferences', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        res.json({
+            success: true,
+            preferences: user.notificationPreferences || {
+                emailShipmentUpdates: true,
+                emailBilling: true,
+                emailMarketing: false,
             },
-            token,
-            phoneData: diditData
         });
     } catch (error) {
-        console.error('Verify OTP error:', error);
-        res.status(400).json({ error: error.message || 'OTP verification failed' });
+        res.status(500).json({ error: 'Failed to fetch notification preferences' });
+    }
+});
+
+// Update notification preferences
+router.put('/notification-preferences', protect, async (req, res) => {
+    try {
+        const { emailShipmentUpdates, emailBilling, emailMarketing } = req.body;
+        const user = await User.findById(req.user._id);
+
+        user.notificationPreferences = {
+            emailShipmentUpdates: emailShipmentUpdates ?? user.notificationPreferences?.emailShipmentUpdates ?? true,
+            emailBilling: emailBilling ?? user.notificationPreferences?.emailBilling ?? true,
+            emailMarketing: emailMarketing ?? user.notificationPreferences?.emailMarketing ?? false,
+        };
+
+        await user.save({ validateBeforeSave: false });
+
+        res.json({
+            success: true,
+            message: 'Notification preferences updated',
+            preferences: user.notificationPreferences,
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update notification preferences' });
+    }
+});
+
+
+// ============= Send Notification Email (Internal Use) =============
+
+// Send a notification email to a user (e.g., shipment update, billing)
+router.post('/send-notification', protect, async (req, res) => {
+    try {
+        const { subject, message, type } = req.body;
+
+        if (!subject || !message) {
+            return res.status(400).json({ error: 'Subject and message are required' });
+        }
+
+        const user = await User.findById(req.user._id);
+
+        // Check notification preferences
+        if (type === 'shipment' && !user.notificationPreferences?.emailShipmentUpdates) {
+            return res.json({ success: true, message: 'User has disabled shipment email notifications' });
+        }
+        if (type === 'billing' && !user.notificationPreferences?.emailBilling) {
+            return res.json({ success: true, message: 'User has disabled billing email notifications' });
+        }
+
+        await sendEmail({
+            to: user.email,
+            subject: `FastFare — ${subject}`,
+            html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #011E41; font-size: 28px; margin: 0;">FastFare</h1>
+                    </div>
+                    <h2 style="color: #333; font-size: 20px;">${subject}</h2>
+                    <p style="color: #666; line-height: 1.6;">
+                        Hello ${user.contactPerson || user.businessName},
+                    </p>
+                    <div style="color: #666; line-height: 1.6;">
+                        ${message}
+                    </div>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+                    <p style="color: #999; font-size: 12px; text-align: center;">
+                        © ${new Date().getFullYear()} FastFare. All rights reserved.<br/>
+                        <a href="${process.env.FRONTEND_URL || 'https://fastfare.org'}/settings" style="color: #999;">Manage notification preferences</a>
+                    </p>
+                </div>
+            `,
+        });
+
+        res.json({ success: true, message: 'Notification email sent' });
+
+    } catch (error) {
+        console.error('Send notification error:', error);
+        res.status(500).json({ error: 'Failed to send notification email' });
     }
 });
 
 
 export default router;
-

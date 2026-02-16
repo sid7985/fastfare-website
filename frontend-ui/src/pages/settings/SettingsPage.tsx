@@ -168,28 +168,28 @@ const SettingsPage = () => {
         </div>
 
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="flex-wrap h-auto gap-2">
-            <TabsTrigger value="general" className="gap-2">
+          <TabsList className="flex-wrap h-auto gap-2 bg-muted/60 p-1">
+            <TabsTrigger value="general" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
               <Settings className="h-4 w-4" />
               General
             </TabsTrigger>
-            <TabsTrigger value="organization" className="gap-2">
+            <TabsTrigger value="organization" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
               <Building2 className="h-4 w-4" />
               Organization
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="gap-2">
+            <TabsTrigger value="notifications" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
               <Bell className="h-4 w-4" />
               Notifications
             </TabsTrigger>
-            <TabsTrigger value="shipping" className="gap-2">
+            <TabsTrigger value="shipping" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
               <Package className="h-4 w-4" />
               Shipping
             </TabsTrigger>
-            <TabsTrigger value="security" className="gap-2">
+            <TabsTrigger value="security" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
               <Shield className="h-4 w-4" />
               Security
             </TabsTrigger>
-            <TabsTrigger value="api" className="gap-2">
+            <TabsTrigger value="api" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
               <Key className="h-4 w-4" />
               API
             </TabsTrigger>
@@ -551,7 +551,7 @@ const SettingsPage = () => {
               Add an extra layer of security to your account
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-6">
             {twoFactorStep === 1 && (
               <>
@@ -614,7 +614,7 @@ const SettingsPage = () => {
               Enter your current password and choose a new one
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Current Password</label>
@@ -662,7 +662,7 @@ const SettingsPage = () => {
               Manage devices where you're currently logged in
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-3">
             {sessions.map((session) => (
               <div key={session.id} className="flex items-center justify-between p-3 rounded-lg border">
@@ -680,9 +680,9 @@ const SettingsPage = () => {
                   </div>
                 </div>
                 {!session.isCurrent && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                     onClick={() => handleTerminateSession(session.id)}
                   >

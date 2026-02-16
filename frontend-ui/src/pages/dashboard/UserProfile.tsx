@@ -11,7 +11,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import {
   User, Mail, Phone, Building2, MapPin, Shield, Bell, Key,
-  Camera, Save, LogOut, Smartphone, Globe, Clock
+  Save, LogOut, Smartphone, Globe, Clock
 } from "lucide-react";
 
 import { authApi } from "@/lib/api";
@@ -54,15 +54,11 @@ const UserProfile = () => {
           <Card className="lg:col-span-1">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center">
-                <div className="relative">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src="/placeholder.svg" />
-                    <AvatarFallback className="text-2xl">RK</AvatarFallback>
-                  </Avatar>
-                  <button className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                    <Camera className="h-4 w-4" />
-                  </button>
-                </div>
+                <Avatar className="h-24 w-24">
+                  <AvatarFallback className="text-2xl bg-primary/10 text-primary font-semibold">
+                    {(profile.firstName?.[0] || "") + (profile.lastName?.[0] || "")}
+                  </AvatarFallback>
+                </Avatar>
                 <h3 className="mt-4 text-xl font-semibold">{profile.firstName} {profile.lastName}</h3>
                 <p className="text-sm text-muted-foreground">{profile.email}</p>
                 <Badge className={`mt-2 ${profile.role === 'Partner' ? 'bg-blue-600' : profile.role === 'Admin' ? 'bg-purple-600' : 'bg-gray-600'}`}>

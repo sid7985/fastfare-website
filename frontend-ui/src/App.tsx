@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 
 // Auth
 import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 import EmailVerification from "./pages/auth/EmailVerification";
 import OrganizationSetup from "./pages/auth/OrganizationSetup";
 import RegisterUser from "./pages/auth/RegisterUser";
@@ -64,6 +65,7 @@ import DriverManagement from "./pages/drivers/DriverManagement";
 
 // Fleet
 import FleetManagement from "./pages/fleet/FleetManagement";
+import PartnerTeamManagement from "./pages/partner/PartnerTeamManagement";
 import PartnerOrders from "./pages/orders/PartnerOrders";
 import PartnerActivity from "./pages/orders/PartnerActivity";
 import UserOrders from "./pages/orders/UserOrders";
@@ -146,7 +148,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <WalletProvider>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -155,6 +157,7 @@ const App = () => (
 
             {/* Auth */}
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify-email" element={<EmailVerification />} />
             <Route path="/organization-setup" element={<OrganizationSetup />} />
             <Route path="/register/user" element={<RegisterUser />} />
@@ -209,6 +212,7 @@ const App = () => (
             <Route path="/fleet" element={<FleetManagement />} />
             <Route path="/partner/orders" element={<PartnerOrders />} />
             <Route path="/partner/activity" element={<PartnerActivity />} />
+            <Route path="/partner/team" element={<PartnerTeamManagement />} />
             <Route path="/my-orders" element={<UserOrders />} />
 
             {/* Analytics */}
